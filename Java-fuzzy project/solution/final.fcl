@@ -1,0 +1,68 @@
+
+FUNCTION_BLOCK final	// Block definition (there may be more than one block per file)
+
+VAR_INPUT				// Define input variables
+	threat_exploitation: REAL;
+	failure_logins_attempt: REAL;
+	cpu_load: REAL;
+    memory_load: REAL;
+    interface_io: REAL;
+END_VAR
+
+VAR_OUTPUT				// Define output variable
+	node_resilience: REAL;
+END_VAR
+
+// NOTE: I asked about the values for threat_exploitation in the Q&A session and you said these values were okay
+FUZZIFY threat_exploitation
+	TERM likely := trian 6 8 10;
+	TERM possible := gauss 5 2;
+	TERM unlikely := trian 0 5 7;
+END_FUZZIFY
+
+FUZZIFY failure_logins_attempt
+	TERM low := trian 0 30 50; 
+	TERM medium := trape 20 30 50 300;
+	TERM high := trian 200 400 1000;
+END_FUZZIFY
+
+FUZZIFY cpu_load
+	TERM low := trian 0 20 30; 
+	TERM medium := trape 20 30 40 60;
+	TERM high := trian 50 70 100;
+END_FUZZIFY
+
+FUZZIFY memory_load
+	TERM low := trian 0 20 30; 
+	TERM medium := trape 20 30 40 60;
+	TERM high := trian 50 70 100;
+END_FUZZIFY
+
+FUZZIFY interface_io
+	TERM low := trian 0 20 30; 
+	TERM medium := trape 20 30 40 60;
+	TERM high := trian 50 70 100;
+END_FUZZIFY
+
+
+DEFUZZIFY node_resilience
+	TERM reliable := gauss 5 2; 
+	TERM no_reliable := gauss 7 2;
+	METHOD : COG;		// Use 'Center of Gravity' defuzzification method
+	DEFAULT := 0;		// Default value is 0 (if no rule activates defuzzifier)
+END_DEFUZZIFY
+
+
+RULEBLOCK No1
+	AND : MIN;			// Use 'min' for 'and' (also implicit use 'max' for 'or' to fulfill DeMorgan's Law)
+	ACT : MIN;			// Use 'min' activation method
+	ACCU : MAX;			// Use 'max' accumulation method
+
+	RULE 1 : IF threat_exploitation IS likely AND failure_logins_attempt IS high AND cpu_load IS high AND memory_load IS high AND interface_io IS high THEN node_resilience IS no_reliable;
+    RULE 2 : IF threat_exploitation IS possible OR failure_logins_attempt IS high OR cpu_load IS high OR memory_load IS high OR interface_io IS high THEN node_resilience IS no_reliable;
+	RULE 3 : IF threat_exploitation IS unlikely AND failure_logins_attempt IS low THEN node_resilience IS reliable;
+    RULE 4 : IF cpu_load IS low OR memory_load IS low OR interface_io IS low THEN node_resilience IS reliable;
+
+END_RULEBLOCK
+
+END_FUNCTION_BLOCK
